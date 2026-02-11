@@ -10,69 +10,60 @@ export default function Home() {
   const [step, setStep] = useState<'rating' | 'form' | 'success'>('rating');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Referencia al contenedor para calcular el ancho al deslizar
   const starsContainerRef = useRef<HTMLDivElement>(null);
 
-  // TU LINK CON EL PLACE ID (YA CONFIGURADO)
+  // --- TU LINK DE GOOGLE (PLACE ID) ---
   const GOOGLE_REVIEW_LINK = "https://search.google.com/local/writereview?placeid=ChIJMSTpPwCdnJURc-Lm7IarJ9M"; 
 
-  // --- LÓGICA DEL SWIPE (DESLIZAR) ---
+  // --- LÓGICA DEL SWIPE (Mover el dedo) ---
   const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
     if (!starsContainerRef.current) return;
 
-    // 1. Obtenemos medidas del contenedor
     const { left, width } = starsContainerRef.current.getBoundingClientRect();
-    
-    // 2. Vemos dónde está el dedo (o mouse)
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
 
-    // 3. Calculamos porcentaje y asignamos estrellas
     const x = clientX - left;
     const percent = x / width;
     let newRating = Math.ceil(percent * 5);
 
-    // Límites (para que no de 0 ni 6)
     if (newRating < 1) newRating = 1;
     if (newRating > 5) newRating = 5;
 
     setRating(newRating);
   };
 
-  // --- CUANDO LEVANTA EL DEDO (CONFIRMAR) ---
+  // --- CUANDO LEVANTA EL DEDO (Click final) ---
   const handleInteractionEnd = () => {
     if (rating === 0) return;
 
-    // Pequeño delay para ver la selección antes de cambiar de pantalla
-    setTimeout(() => {
-      if (rating >= 4) {
-        // ÉXITO: Abrir Google y mostrar gracias
-        window.open(GOOGLE_REVIEW_LINK, '_blank');
-        setStep('success');
-      } else {
-        // QUEJA: Ir al formulario
+    // ACA ESTÁ LA LÓGICA:
+    if (rating >= 4) {
+      // SI ES BUENA (4-5): Abre Google DIRECTAMENTE sin esperar
+      // Esto evita que el celular bloquee el popup
+      window.open(GOOGLE_REVIEW_LINK, '_blank');
+      setStep('success');
+    } else {
+      // SI ES MALA (1-3): Esperamos un cachito para que vea la estrella pintada y cambiamos
+      setTimeout(() => {
         setStep('form');
-      }
-    }, 200);
+      }, 300);
+    }
   };
 
   const handleFormSubmit = async (formData: FormData) => {
     setIsSubmitting(true);
     formData.append('rating', rating.toString());
-    
     const result = await enviarQueja(formData);
     
     setIsSubmitting(false);
-    if (result?.success) {
-      setStep('success');
-    } else {
-      alert("Hubo un error. Por favor, intentá de nuevo.");
-    }
+    if (result?.success) setStep('success');
+    else alert("Hubo un error. Por favor, intentá de nuevo.");
   };
 
   return (
     <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#1a0b2e] via-[#2e1065] to-[#000000] p-4 font-sans overflow-hidden relative selection:bg-purple-500/30">
       
-      {/* Fondos decorativos */}
+      {/* Background Glows */}
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse" />
       <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-fuchsia-600/10 rounded-full blur-[120px] pointer-events-none" />
 
@@ -85,10 +76,9 @@ export default function Home() {
         transition={{ duration: 0.5 }}
       >
         <div className="p-8 md:p-12 relative z-10">
-          
           <AnimatePresence mode="wait">
             
-            {/* --- PASO 1: SELECCIÓN DE ESTRELLAS (AHORA CON SWIPE) --- */}
+            {/* --- PASO 1: SELECCIÓN --- */}
             {step === 'rating' && (
               <motion.div
                 key="step-rating"
@@ -107,17 +97,16 @@ export default function Home() {
                   <p className="text-white/50 text-sm">Deslizá el dedo para calificar</p>
                 </div>
 
-                {/* --- CONTENEDOR TÁCTIL --- */}
+                {/* --- CONTENEDOR TÁCTIL (CLICK Y SWIPE) --- */}
                 <div 
                   ref={starsContainerRef}
-                  // Eventos de Mouse (PC)
+                  // Mouse (PC)
                   onMouseMove={handleTouchMove}
-                  onClick={handleInteractionEnd}
+                  onClick={handleInteractionEnd} // <--- ACÁ DETECTA EL CLICK FINAL
                   onMouseLeave={() => setRating(0)}
-                  // Eventos Táctiles (Celular)
+                  // Touch (Celular)
                   onTouchMove={handleTouchMove}
-                  onTouchEnd={handleInteractionEnd}
-                  // CLASES CLAVE: touch-none (evita scroll), cursor-pointer
+                  onTouchEnd={handleInteractionEnd} // <--- ACÁ DETECTA CUANDO SOLTÁS EL DEDO
                   className="flex gap-1 py-4 px-2 cursor-pointer touch-none select-none hover:scale-105 transition-transform"
                 >
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -141,8 +130,6 @@ export default function Home() {
                     </motion.div>
                   ))}
                 </div>
-                {/* --- FIN CONTENEDOR --- */}
-
               </motion.div>
             )}
 
@@ -155,51 +142,18 @@ export default function Home() {
                 className="space-y-6"
               >
                 <div className="flex items-center gap-4 mb-2">
-                  <button 
-                    onClick={() => setStep('rating')} 
-                    className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors text-white/70"
-                  >
+                  <button onClick={() => setStep('rating')} className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors text-white/70">
                     <ArrowLeft size={20} />
                   </button>
                   <h2 className="text-xl font-bold text-white">Cuéntanos qué pasó</h2>
                 </div>
-
                 <form action={handleFormSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="relative group">
-                      <textarea 
-                        name="comment"
-                        required
-                        placeholder="Escribí acá tu experiencia..."
-                        className="w-full bg-black/30 border border-white/10 rounded-2xl p-4 text-white placeholder-white/30 focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all resize-none h-32"
-                      />
-                      <MessageSquare className="absolute top-4 right-4 text-white/10 pointer-events-none group-focus-within:text-purple-500/50 transition-colors" size={18} />
-                    </div>
+                  <div className="relative group">
+                    <textarea name="comment" required placeholder="Escribí acá tu experiencia..." className="w-full bg-black/30 border border-white/10 rounded-2xl p-4 text-white placeholder-white/30 focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all resize-none h-32"/>
+                    <MessageSquare className="absolute top-4 right-4 text-white/10 pointer-events-none" size={18} />
                   </div>
-
-                  <div className="space-y-2">
-                    <input 
-                      type="text"
-                      name="contact"
-                      placeholder="Email o teléfono (Opcional)"
-                      className="w-full bg-black/30 border border-white/10 rounded-xl p-4 text-white placeholder-white/30 focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-gradient-to-r from-purple-700 to-fuchsia-700 hover:from-purple-600 hover:to-fuchsia-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-purple-900/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-95"
-                  >
-                    {isSubmitting ? (
-                      <span className="animate-pulse">Enviando...</span>
-                    ) : (
-                      <>
-                        <span>Enviar Comentario Privado</span>
-                        <Send size={18} />
-                      </>
-                    )}
-                  </button>
+                  <input type="text" name="contact" placeholder="Email o teléfono (Opcional)" className="w-full bg-black/30 border border-white/10 rounded-xl p-4 text-white placeholder-white/30 focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"/>
+                  <button type="submit" disabled={isSubmitting} className="w-full bg-gradient-to-r from-purple-700 to-fuchsia-700 hover:from-purple-600 hover:to-fuchsia-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-purple-900/40 transition-all disabled:opacity-50">{isSubmitting ? "Enviando..." : <><span>Enviar Comentario</span><Send size={18}/></>}</button>
                 </form>
               </motion.div>
             )}
@@ -213,41 +167,22 @@ export default function Home() {
                 className="text-center py-8 space-y-6"
               >
                 <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto ring-4 ring-green-500/10">
-                   <motion.div 
-                     initial={{ scale: 0 }}
-                     animate={{ scale: 1 }}
-                     transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                   >
-                     <CheckCircle className="text-green-400 w-10 h-10" />
-                   </motion.div>
+                   <CheckCircle className="text-green-400 w-10 h-10" />
                 </div>
-                
                 <div>
                   <h2 className="text-2xl font-bold text-white mb-2">¡Muchas Gracias!</h2>
                   <p className="text-white/60 max-w-[260px] mx-auto text-sm leading-relaxed">
-                    {rating >= 4 
-                      ? "Te agradecemos por tomarte el tiempo de calificarnos en Google. 💜" 
-                      : "Tu mensaje fue enviado directamente al dueño. Gracias por ayudarnos a mejorar."}
+                    {rating >= 4 ? "Te agradecemos por calificarnos en Google. 💜" : "Tu mensaje fue enviado. Gracias por ayudarnos."}
                   </p>
                 </div>
-
-                <button 
-                  onClick={() => window.location.reload()}
-                  className="px-6 py-2 bg-white/5 hover:bg-white/10 rounded-full text-sm text-purple-200 hover:text-white transition-colors border border-white/5"
-                >
-                  Volver al inicio
-                </button>
+                <button onClick={() => window.location.reload()} className="px-6 py-2 bg-white/5 hover:bg-white/10 rounded-full text-sm text-purple-200 border border-white/5">Volver al inicio</button>
               </motion.div>
             )}
 
           </AnimatePresence>
         </div>
       </motion.div>
-
-      {/* Footer Branding */}
-      <div className="absolute bottom-6 text-center w-full opacity-30 hover:opacity-100 transition-opacity">
-        <p className="text-[10px] tracking-widest uppercase text-white">Powered by Devoys</p>
-      </div>
+      <div className="absolute bottom-6 text-center w-full opacity-30"><p className="text-[10px] tracking-widest uppercase text-white">Powered by Devoys</p></div>
     </main>
   );
 }
