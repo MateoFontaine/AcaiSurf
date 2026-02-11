@@ -1,45 +1,65 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Send, MessageSquare, ArrowLeft, CheckCircle } from 'lucide-react';
-import { enviarQueja } from './actions'; // Asegurate de tener tu archivo actions.ts
+import { enviarQueja } from './actions'; 
 
 export default function Home() {
   const [rating, setRating] = useState(0);
   const [step, setStep] = useState<'rating' | 'form' | 'success'>('rating');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Referencia al contenedor para calcular el ancho al deslizar
+  const starsContainerRef = useRef<HTMLDivElement>(null);
 
-  // --- ⚠️ IMPORTANTE: REEMPLAZÁ ESTO CON TU LINK DE RESEÑA DIRECTA ---
-  // Si usás el link con PlaceID, se abre el popup de estrellas directo.
+  // TU LINK CON EL PLACE ID (YA CONFIGURADO)
   const GOOGLE_REVIEW_LINK = "https://search.google.com/local/writereview?placeid=ChIJMSTpPwCdnJURc-Lm7IarJ9M"; 
-  // Si no tenés el ID a mano, usá el link corto que tenías:
-  // const GOOGLE_REVIEW_LINK = "https://share.google/uvQnQiOShCURBzqK7";
 
-  const handleRate = (star: number) => {
-    setRating(star);
+  // --- LÓGICA DEL SWIPE (DESLIZAR) ---
+  const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (!starsContainerRef.current) return;
+
+    // 1. Obtenemos medidas del contenedor
+    const { left, width } = starsContainerRef.current.getBoundingClientRect();
     
-    if (star >= 4) {
-      // CASO ÉXITO: 4 o 5 Estrellas
-      // 1. Abrimos Google Maps en una pestaña nueva INMEDIATAMENTE
-      window.open(GOOGLE_REVIEW_LINK, '_blank');
-      
-      // 2. Mostramos mensaje de agradecimiento en la pantalla
-      setStep('success');
-    } else {
-      // CASO QUEJA: 1, 2 o 3 Estrellas
-      // Pequeño delay para que la animación de la estrella se vea antes de cambiar
-      setTimeout(() => {
+    // 2. Vemos dónde está el dedo (o mouse)
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+
+    // 3. Calculamos porcentaje y asignamos estrellas
+    const x = clientX - left;
+    const percent = x / width;
+    let newRating = Math.ceil(percent * 5);
+
+    // Límites (para que no de 0 ni 6)
+    if (newRating < 1) newRating = 1;
+    if (newRating > 5) newRating = 5;
+
+    setRating(newRating);
+  };
+
+  // --- CUANDO LEVANTA EL DEDO (CONFIRMAR) ---
+  const handleInteractionEnd = () => {
+    if (rating === 0) return;
+
+    // Pequeño delay para ver la selección antes de cambiar de pantalla
+    setTimeout(() => {
+      if (rating >= 4) {
+        // ÉXITO: Abrir Google y mostrar gracias
+        window.open(GOOGLE_REVIEW_LINK, '_blank');
+        setStep('success');
+      } else {
+        // QUEJA: Ir al formulario
         setStep('form');
-      }, 300);
-    }
+      }
+    }, 200);
   };
 
   const handleFormSubmit = async (formData: FormData) => {
     setIsSubmitting(true);
-    formData.append('rating', rating.toString()); // Agregamos las estrellas al form
+    formData.append('rating', rating.toString());
     
-    const result = await enviarQueja(formData); // Llamamos al Server Action
+    const result = await enviarQueja(formData);
     
     setIsSubmitting(false);
     if (result?.success) {
@@ -50,13 +70,13 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#1a0b2e] via-[#2e1065] to-[#000000] p-4 font-sans overflow-hidden relative">
+    <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#1a0b2e] via-[#2e1065] to-[#000000] p-4 font-sans overflow-hidden relative selection:bg-purple-500/30">
       
-      {/* Fondos decorativos (Glow) */}
+      {/* Fondos decorativos */}
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse" />
       <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-fuchsia-600/10 rounded-full blur-[120px] pointer-events-none" />
 
-      {/* Tarjeta Principal Glassmorphism */}
+      {/* Tarjeta Principal */}
       <motion.div 
         layout
         className="relative w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden"
@@ -68,7 +88,7 @@ export default function Home() {
           
           <AnimatePresence mode="wait">
             
-            {/* --- PASO 1: SELECCIÓN DE ESTRELLAS --- */}
+            {/* --- PASO 1: SELECCIÓN DE ESTRELLAS (AHORA CON SWIPE) --- */}
             {step === 'rating' && (
               <motion.div
                 key="step-rating"
@@ -84,33 +104,49 @@ export default function Home() {
                   <h1 className="text-3xl font-bold text-white">
                     ¿Cómo estuvo tu <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">Acai</span>?
                   </h1>
-                  <p className="text-white/50 text-sm">Tu opinión nos ayuda a mejorar cada día.</p>
+                  <p className="text-white/50 text-sm">Deslizá el dedo para calificar</p>
                 </div>
 
-                <div className="flex gap-2">
+                {/* --- CONTENEDOR TÁCTIL --- */}
+                <div 
+                  ref={starsContainerRef}
+                  // Eventos de Mouse (PC)
+                  onMouseMove={handleTouchMove}
+                  onClick={handleInteractionEnd}
+                  onMouseLeave={() => setRating(0)}
+                  // Eventos Táctiles (Celular)
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleInteractionEnd}
+                  // CLASES CLAVE: touch-none (evita scroll), cursor-pointer
+                  className="flex gap-1 py-4 px-2 cursor-pointer touch-none select-none hover:scale-105 transition-transform"
+                >
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <motion.button
+                    <motion.div
                       key={star}
-                      whileHover={{ scale: 1.2, rotate: 10 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => handleRate(star)}
-                      className="focus:outline-none transition-transform"
+                      className="p-1"
+                      animate={{ 
+                        scale: rating >= star ? 1.2 : 1,
+                        rotate: rating >= star ? [0, -5, 5, 0] : 0
+                      }}
+                      transition={{ duration: 0.2 }}
                     >
                       <Star 
                         size={46} 
                         fill={rating >= star ? "#fbbf24" : "transparent"} 
-                        className={`transition-all duration-300 drop-shadow-lg ${
-                          rating >= star ? 'text-yellow-400' : 'text-white/10 hover:text-white/30'
+                        className={`transition-colors duration-100 drop-shadow-lg ${
+                          rating >= star ? 'text-yellow-400' : 'text-white/10'
                         }`} 
                         strokeWidth={1.5}
                       />
-                    </motion.button>
+                    </motion.div>
                   ))}
                 </div>
+                {/* --- FIN CONTENEDOR --- */}
+
               </motion.div>
             )}
 
-            {/* --- PASO 2: FORMULARIO DE QUEJA (1-3 Estrellas) --- */}
+            {/* --- PASO 2: FORMULARIO --- */}
             {step === 'form' && (
               <motion.div
                 key="step-form"
@@ -168,7 +204,7 @@ export default function Home() {
               </motion.div>
             )}
 
-            {/* --- PASO 3: ÉXITO (Para ambos casos) --- */}
+            {/* --- PASO 3: ÉXITO --- */}
             {step === 'success' && (
               <motion.div
                 key="step-success"
