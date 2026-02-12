@@ -3,7 +3,6 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, ArrowLeft, ExternalLink, MapPin } from 'lucide-react'; 
-import { enviarQueja } from './actions'; 
 
 export default function Home() {
   const [rating, setRating] = useState(0);
@@ -13,9 +12,13 @@ export default function Home() {
   const ratingRef = useRef(0);
   const starsContainerRef = useRef<HTMLDivElement>(null);
 
+  // --- TUS DATOS ---
   const GOOGLE_REVIEW_LINK = "https://search.google.com/local/writereview?placeid=ChIJMSTpPwCdnJURc-Lm7IarJ9M"; 
   const BANNER_URL = "https://lh3.googleusercontent.com/p/AF1QipPKgRqeQNwHUALU17fhN3YdD78C0NXqW2zwqHg1=s680-w680-h510-rw";
   const LOGO_URL = "https://lh3.googleusercontent.com/p/AF1QipMRoQo5wdydJ8BwJ8RT7sbsafWEI9ThXWM9hQoa=s680-w680-h510-rw"; 
+  
+  // ⚠️ PEGÁ ACÁ LA KEY QUE TE LLEGÓ AL MAIL:
+  const WEB3FORMS_KEY = "44dea49a-4a06-4cfb-a077-6062a4227449"; 
 
   // --- LÓGICA SWIPE ---
   const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
@@ -48,35 +51,58 @@ export default function Home() {
     }
   };
 
+  // --- FUNCIÓN DE ENVÍO CON WEB3FORMS ---
   const handleFormSubmit = async (formData: FormData) => {
     setIsSubmitting(true);
-    formData.append('rating', rating.toString());
-    const result = await enviarQueja(formData);
-    setIsSubmitting(false);
-    if (result?.success) setStep('success');
-    else alert("Error al enviar. Intenta de nuevo.");
+    
+    // Armamos el JSON para Web3Forms
+    const data = {
+        access_key: WEB3FORMS_KEY, // La clave mágica
+        subject: `Nueva Reseña Acai Surf: ${rating} Estrellas`, // Asunto del mail
+        rating: rating,
+        message: formData.get('message'),
+        contact: formData.get('contact'),
+        from_name: "Acai Feedback App", // Nombre del remitente
+        botcheck: false // Desactiva chequeo estricto de bots para evitar líos en localhost
+    };
+
+    try {
+      const response = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      
+      const result = await response.json();
+
+      if (result.success) {
+        setStep('success');
+      } else {
+        console.error(result); // Por si querés ver el error en consola
+        alert("Hubo un error. Fijate que la Key esté bien copiada.");
+      }
+    } catch (error) {
+      alert("Error de conexión.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    // MAIN CONTAINER: Fondo neutro limpio
     <main className="relative min-h-screen w-full flex items-center justify-center bg-gray-50 dark:bg-black p-4 font-sans text-slate-800 dark:text-slate-200 overflow-hidden">
       
-      {/* --- FONDO ATMOSFÉRICO (Glows de Playa) --- */}
-      
-      {/* Luz 1: Cyan/Turquesa (Agua) - Arriba Izquierda */}
+      {/* FONDO ATMOSFÉRICO */}
       <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-cyan-400/20 dark:bg-cyan-900/20 rounded-full blur-[120px] pointer-events-none opacity-60 mix-blend-multiply dark:mix-blend-screen" />
-      
-      {/* Luz 2: Ámbar/Naranja (Sol/Arena) - Abajo Derecha */}
       <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-300/20 dark:bg-amber-700/10 rounded-full blur-[120px] pointer-events-none opacity-60 mix-blend-multiply dark:mix-blend-screen" />
       
-      {/* ------------------------------------------- */}
-
-      {/* CARD: Con backdrop-blur para que se noten los colores de fondo a través (opcional) */}
+      {/* CARD */}
       <motion.div 
         layout
         className="relative z-10 w-full max-w-[380px] bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-slate-200/50 dark:shadow-black/50 overflow-hidden border border-white/50 dark:border-zinc-800"
       >
-        
         <div className="h-36 w-full relative">
             <div 
                 className="absolute inset-0 bg-cover bg-top"
@@ -86,7 +112,6 @@ export default function Home() {
         </div>
 
         <div className="px-6 pb-8 relative">
-            
             <div className="relative -mt-12 mb-3 flex justify-center">
                 <div className="w-24 h-24 rounded-full border-[5px] border-white dark:border-zinc-900 shadow-md overflow-hidden bg-white dark:bg-zinc-800">
                     <img 
@@ -100,7 +125,6 @@ export default function Home() {
 
           <AnimatePresence mode="wait">
             
-            {/* --- PANTALLA 1 --- */}
             {step === 'rating' && (
               <motion.div
                 key="step-rating"
@@ -112,17 +136,14 @@ export default function Home() {
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight mb-1">
                   Acai Surf
                 </h1>
-                
                 <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-xs font-medium mb-8">
                     <MapPin size={12} />
                     <span>Pinamar, Arg</span>
                 </div>
-
                 <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">
                   ¿Qué tal la experiencia?
                 </p>
 
-                {/* ESTRELLAS */}
                 <div 
                   ref={starsContainerRef}
                   onMouseMove={handleTouchMove}
@@ -151,14 +172,12 @@ export default function Home() {
                     </motion.div>
                   ))}
                 </div>
-                
                 <p className="text-[10px] text-slate-300 dark:text-slate-600 font-medium tracking-widest uppercase mt-2">
                     Deslizá para calificar
                 </p>
               </motion.div>
             )}
 
-            {/* --- PANTALLA 2: FORMULARIO --- */}
             {step === 'form' && (
               <motion.div
                 key="step-form"
@@ -175,10 +194,10 @@ export default function Home() {
                 <form action={handleFormSubmit} className="space-y-4">
                   <div className="relative">
                     <textarea 
-                        name="comment" 
+                        name="message" 
                         required 
                         placeholder="Contanos qué pasó..." 
-                        className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl p-4 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all resize-none h-32 text-sm"
+                        className="w-full bg-slate-50/80 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 rounded-xl p-4 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all resize-none h-32 text-sm"
                     />
                   </div>
                   <div>
@@ -186,7 +205,7 @@ export default function Home() {
                         type="text" 
                         name="contact" 
                         placeholder="Tu contacto (Opcional)" 
-                        className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl p-4 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all text-sm"
+                        className="w-full bg-slate-50/80 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 rounded-xl p-4 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all text-sm"
                     />
                   </div>
 
@@ -201,7 +220,6 @@ export default function Home() {
               </motion.div>
             )}
 
-            {/* --- PANTALLA 3: ÉXITO --- */}
             {step === 'success' && (
               <motion.div
                 key="step-success"
@@ -243,8 +261,6 @@ export default function Home() {
           </AnimatePresence>
         </div>
       </motion.div>
-
-      {/* Footer */}
       <div className="absolute bottom-4 text-center w-full z-10">
         <p className="text-[10px] text-slate-300 dark:text-zinc-700 font-medium">Powered by Devoys</p>
       </div>
