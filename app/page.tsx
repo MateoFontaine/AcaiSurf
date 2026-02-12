@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Send, MessageSquare, ArrowLeft, CheckCircle, ExternalLink } from 'lucide-react';
+import { Star, ArrowLeft, ExternalLink, MapPin } from 'lucide-react'; 
 import { enviarQueja } from './actions'; 
 
 export default function Home() {
@@ -10,52 +10,38 @@ export default function Home() {
   const [step, setStep] = useState<'rating' | 'form' | 'success'>('rating');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // 1. REF PARA SAFARI: Guarda el valor AL INSTANTE sin esperar a React
   const ratingRef = useRef(0);
   const starsContainerRef = useRef<HTMLDivElement>(null);
 
-  // LINK DIRECTO (PLACE ID)
   const GOOGLE_REVIEW_LINK = "https://search.google.com/local/writereview?placeid=ChIJMSTpPwCdnJURc-Lm7IarJ9M"; 
+  const BANNER_URL = "https://lh3.googleusercontent.com/p/AF1QipPKgRqeQNwHUALU17fhN3YdD78C0NXqW2zwqHg1=s680-w680-h510-rw";
+  const LOGO_URL = "https://lh3.googleusercontent.com/p/AF1QipMRoQo5wdydJ8BwJ8RT7sbsafWEI9ThXWM9hQoa=s680-w680-h510-rw"; 
 
-  // --- LÓGICA DEL SWIPE ---
+  // --- LÓGICA SWIPE ---
   const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
     if (!starsContainerRef.current) return;
-
     const { left, width } = starsContainerRef.current.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-
     const x = clientX - left;
     const percent = x / width;
     let newRating = Math.ceil(percent * 5);
-
     if (newRating < 1) newRating = 1;
     if (newRating > 5) newRating = 5;
-
-    // Actualizamos AMBOS: el estado (para que se vea) y la ref (para la lógica)
     setRating(newRating);
     ratingRef.current = newRating; 
   };
 
-  // --- CUANDO LEVANTA EL DEDO ---
   const handleInteractionEnd = () => {
-    // Leemos directo de la REF para evitar el delay de Safari
     const currentRating = ratingRef.current; 
-
     if (currentRating === 0) return;
 
     if (currentRating >= 4) {
-      // INTENTO 1: Abrir en pestaña nueva (Ideal)
       const newWindow = window.open(GOOGLE_REVIEW_LINK, '_blank');
-      
-      // FALLBACK SAFARI: Si el navegador bloqueó el popup (newWindow es null),
-      // redirigimos en la MISMA pestaña para asegurar que llegue.
       if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
         window.location.href = GOOGLE_REVIEW_LINK;
       }
-      
       setStep('success');
     } else {
-      // Si es mala nota (1-3)
       setTimeout(() => {
         setStep('form');
       }, 300);
@@ -66,140 +52,202 @@ export default function Home() {
     setIsSubmitting(true);
     formData.append('rating', rating.toString());
     const result = await enviarQueja(formData);
-    
     setIsSubmitting(false);
     if (result?.success) setStep('success');
-    else alert("Hubo un error. Por favor, intentá de nuevo.");
+    else alert("Error al enviar. Intenta de nuevo.");
   };
 
   return (
-    <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#1a0b2e] via-[#2e1065] to-[#000000] p-4 font-sans overflow-hidden relative selection:bg-purple-500/30">
+    // MAIN CONTAINER: Fondo neutro limpio
+    <main className="relative min-h-screen w-full flex items-center justify-center bg-gray-50 dark:bg-black p-4 font-sans text-slate-800 dark:text-slate-200 overflow-hidden">
       
-      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-fuchsia-600/10 rounded-full blur-[120px] pointer-events-none" />
+      {/* --- FONDO ATMOSFÉRICO (Glows de Playa) --- */}
+      
+      {/* Luz 1: Cyan/Turquesa (Agua) - Arriba Izquierda */}
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-cyan-400/20 dark:bg-cyan-900/20 rounded-full blur-[120px] pointer-events-none opacity-60 mix-blend-multiply dark:mix-blend-screen" />
+      
+      {/* Luz 2: Ámbar/Naranja (Sol/Arena) - Abajo Derecha */}
+      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-300/20 dark:bg-amber-700/10 rounded-full blur-[120px] pointer-events-none opacity-60 mix-blend-multiply dark:mix-blend-screen" />
+      
+      {/* ------------------------------------------- */}
 
+      {/* CARD: Con backdrop-blur para que se noten los colores de fondo a través (opcional) */}
       <motion.div 
         layout
-        className="relative w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden"
+        className="relative z-10 w-full max-w-[380px] bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-slate-200/50 dark:shadow-black/50 overflow-hidden border border-white/50 dark:border-zinc-800"
       >
-        <div className="p-8 md:p-12 relative z-10">
+        
+        <div className="h-36 w-full relative">
+            <div 
+                className="absolute inset-0 bg-cover bg-top"
+                style={{ backgroundImage: `url(${BANNER_URL})` }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/30 dark:to-zinc-900/90" />
+        </div>
+
+        <div className="px-6 pb-8 relative">
+            
+            <div className="relative -mt-12 mb-3 flex justify-center">
+                <div className="w-24 h-24 rounded-full border-[5px] border-white dark:border-zinc-900 shadow-md overflow-hidden bg-white dark:bg-zinc-800">
+                    <img 
+                        src={LOGO_URL} 
+                        alt="Acai Surf Logo" 
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.currentTarget.src = "https://cdn-icons-png.flaticon.com/512/10692/10692945.png" }}
+                    />
+                </div>
+            </div>
+
           <AnimatePresence mode="wait">
             
+            {/* --- PANTALLA 1 --- */}
             {step === 'rating' && (
               <motion.div
                 key="step-rating"
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -50 }}
-                className="flex flex-col items-center text-center space-y-8"
+                exit={{ opacity: 0, x: -20 }}
+                className="flex flex-col items-center text-center"
               >
-                <div className="space-y-2">
-                  <span className="inline-block px-3 py-1 bg-purple-500/20 rounded-full text-[10px] font-bold tracking-widest text-purple-200 uppercase mb-2 border border-purple-500/30">
-                    Feedback
-                  </span>
-                  <h1 className="text-3xl font-bold text-white">
-                    ¿Cómo estuvo tu <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">Acai</span>?
-                  </h1>
-                  <p className="text-white/50 text-sm">Deslizá el dedo para calificar</p>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight mb-1">
+                  Acai Surf
+                </h1>
+                
+                <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-xs font-medium mb-8">
+                    <MapPin size={12} />
+                    <span>Pinamar, Arg</span>
                 </div>
 
+                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-2">
+                  ¿Qué tal la experiencia?
+                </p>
+
+                {/* ESTRELLAS */}
                 <div 
                   ref={starsContainerRef}
                   onMouseMove={handleTouchMove}
                   onClick={handleInteractionEnd}
-                  onMouseLeave={() => {
-                    setRating(0);
-                    ratingRef.current = 0;
-                  }}
+                  onMouseLeave={() => { setRating(0); ratingRef.current = 0; }}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleInteractionEnd}
-                  className="flex gap-1 py-4 px-2 cursor-pointer touch-none select-none hover:scale-105 transition-transform"
+                  className="flex justify-center gap-3 py-6 px-2 w-full cursor-pointer touch-none select-none"
                 >
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <motion.div
-                      key={star}
-                      className="p-1"
-                      animate={{ 
-                        scale: rating >= star ? 1.2 : 1,
-                        rotate: rating >= star ? [0, -5, 5, 0] : 0
-                      }}
-                      transition={{ duration: 0.2 }}
+                    <motion.div 
+                        key={star} 
+                        whileHover={{ scale: 1.15 }}
+                        whileTap={{ scale: 0.9 }}
                     >
                       <Star 
-                        size={46} 
-                        fill={rating >= star ? "#fbbf24" : "transparent"} 
-                        className={`transition-colors duration-100 drop-shadow-lg ${
-                          rating >= star ? 'text-yellow-400' : 'text-white/10'
-                        }`} 
-                        strokeWidth={1.5}
+                        size={42} 
+                        fill={rating >= star ? "#F59E0B" : "transparent"} 
+                        className={`transition-all duration-200 ${
+                            rating >= star 
+                                ? 'text-amber-500 drop-shadow-sm' 
+                                : 'text-slate-200 dark:text-zinc-700'
+                        }`}
+                        strokeWidth={1.5} 
                       />
                     </motion.div>
                   ))}
                 </div>
+                
+                <p className="text-[10px] text-slate-300 dark:text-slate-600 font-medium tracking-widest uppercase mt-2">
+                    Deslizá para calificar
+                </p>
               </motion.div>
             )}
 
+            {/* --- PANTALLA 2: FORMULARIO --- */}
             {step === 'form' && (
               <motion.div
                 key="step-form"
-                initial={{ opacity: 0, x: 50 }}
+                initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="space-y-6"
               >
-                <div className="flex items-center gap-4 mb-2">
-                  <button onClick={() => setStep('rating')} className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors text-white/70">
+                <div className="flex items-center gap-3 mb-6 pt-2">
+                  <button onClick={() => setStep('rating')} className="p-2 -ml-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-full transition-colors text-slate-400">
                     <ArrowLeft size={20} />
                   </button>
-                  <h2 className="text-xl font-bold text-white">Cuéntanos qué pasó</h2>
+                  <h2 className="text-lg font-bold text-slate-800 dark:text-white">Danos tu opinión</h2>
                 </div>
+
                 <form action={handleFormSubmit} className="space-y-4">
-                  <div className="relative group">
-                    <textarea name="comment" required placeholder="Escribí acá tu experiencia..." className="w-full bg-black/30 border border-white/10 rounded-2xl p-4 text-white placeholder-white/30 focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all resize-none h-32"/>
-                    <MessageSquare className="absolute top-4 right-4 text-white/10 pointer-events-none" size={18} />
+                  <div className="relative">
+                    <textarea 
+                        name="comment" 
+                        required 
+                        placeholder="Contanos qué pasó..." 
+                        className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl p-4 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all resize-none h-32 text-sm"
+                    />
                   </div>
-                  <input type="text" name="contact" placeholder="Email o teléfono (Opcional)" className="w-full bg-black/30 border border-white/10 rounded-xl p-4 text-white placeholder-white/30 focus:outline-none focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all"/>
-                  <button type="submit" disabled={isSubmitting} className="w-full bg-gradient-to-r from-purple-700 to-fuchsia-700 hover:from-purple-600 hover:to-fuchsia-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-purple-900/40 transition-all disabled:opacity-50">{isSubmitting ? "Enviando..." : <><span>Enviar Comentario</span><Send size={18}/></>}</button>
+                  <div>
+                    <input 
+                        type="text" 
+                        name="contact" 
+                        placeholder="Tu contacto (Opcional)" 
+                        className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl p-4 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all text-sm"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-slate-900 dark:bg-black hover:bg-black dark:hover:bg-zinc-900 border border-transparent dark:border-zinc-800 text-white font-bold py-4 rounded-xl shadow-lg transition-all disabled:opacity-70 text-sm"
+                  >
+                    {isSubmitting ? "Enviando..." : "Enviar mensaje"}
+                  </button>
                 </form>
               </motion.div>
             )}
 
+            {/* --- PANTALLA 3: ÉXITO --- */}
             {step === 'success' && (
               <motion.div
                 key="step-success"
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="text-center py-8 space-y-6"
+                className="text-center py-8"
               >
-                <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto ring-4 ring-green-500/10">
-                   <CheckCircle className="text-green-400 w-10 h-10" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-white mb-2">¡Muchas Gracias!</h2>
-                  <p className="text-white/60 max-w-[260px] mx-auto text-sm leading-relaxed">
-                    {rating >= 4 ? "Te agradecemos por calificarnos en Google. 💜" : "Tu mensaje fue enviado. Gracias por ayudarnos."}
-                  </p>
+                <div className="w-16 h-16 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-100 dark:border-amber-900/30">
+                   <Star className="text-amber-500 w-8 h-8 fill-amber-500" />
                 </div>
                 
-                {/* BOTÓN DE RESPALDO POR SI SAFARI BLOQUEA TODO */}
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">¡Gracias! 🤙</h2>
+                <p className="text-slate-500 dark:text-slate-400 text-sm mb-8 px-4 leading-relaxed">
+                  {rating >= 4 
+                    ? "Te estamos redirigiendo a Google. ¡Gracias por la buena onda!" 
+                    : "Mensaje recibido. Gracias por ayudarnos a mejorar."}
+                </p>
+
                 {rating >= 4 && (
                     <a 
                       href={GOOGLE_REVIEW_LINK} 
                       target="_blank"
-                      className="inline-flex items-center gap-2 text-purple-300 hover:text-white text-sm mt-2 border-b border-purple-300/30 pb-0.5"
+                      className="inline-flex items-center justify-center gap-2 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors mb-8"
                     >
                       <ExternalLink size={14} />
-                      Si no se abrió Google, click acá
+                      Si no abrió Google, click acá
                     </a>
                 )}
 
-                <button onClick={() => window.location.reload()} className="block mx-auto mt-6 px-6 py-2 bg-white/5 hover:bg-white/10 rounded-full text-sm text-purple-200 border border-white/5">Volver al inicio</button>
+                <button 
+                    onClick={() => window.location.reload()}
+                    className="text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 text-xs font-bold uppercase tracking-widest"
+                >
+                  Volver al inicio
+                </button>
               </motion.div>
             )}
 
           </AnimatePresence>
         </div>
       </motion.div>
-      <div className="absolute bottom-6 text-center w-full opacity-30"><p className="text-[10px] tracking-widest uppercase text-white">Powered by Devoys</p></div>
+
+      {/* Footer */}
+      <div className="absolute bottom-4 text-center w-full z-10">
+        <p className="text-[10px] text-slate-300 dark:text-zinc-700 font-medium">Powered by Devoys</p>
+      </div>
     </main>
   );
 }
