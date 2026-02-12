@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Send, MessageSquare, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Star, Send, MessageSquare, ArrowLeft, CheckCircle, ExternalLink } from 'lucide-react';
 import { enviarQueja } from './actions'; 
 
 export default function Home() {
@@ -10,12 +10,14 @@ export default function Home() {
   const [step, setStep] = useState<'rating' | 'form' | 'success'>('rating');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // 1. REF PARA SAFARI: Guarda el valor AL INSTANTE sin esperar a React
+  const ratingRef = useRef(0);
   const starsContainerRef = useRef<HTMLDivElement>(null);
 
-  // --- TU LINK DE GOOGLE (PLACE ID) ---
+  // LINK DIRECTO (PLACE ID)
   const GOOGLE_REVIEW_LINK = "https://search.google.com/local/writereview?placeid=ChIJMSTpPwCdnJURc-Lm7IarJ9M"; 
 
-  // --- LÓGICA DEL SWIPE (Mover el dedo) ---
+  // --- LÓGICA DEL SWIPE ---
   const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
     if (!starsContainerRef.current) return;
 
@@ -29,21 +31,31 @@ export default function Home() {
     if (newRating < 1) newRating = 1;
     if (newRating > 5) newRating = 5;
 
+    // Actualizamos AMBOS: el estado (para que se vea) y la ref (para la lógica)
     setRating(newRating);
+    ratingRef.current = newRating; 
   };
 
-  // --- CUANDO LEVANTA EL DEDO (Click final) ---
+  // --- CUANDO LEVANTA EL DEDO ---
   const handleInteractionEnd = () => {
-    if (rating === 0) return;
+    // Leemos directo de la REF para evitar el delay de Safari
+    const currentRating = ratingRef.current; 
 
-    // ACA ESTÁ LA LÓGICA:
-    if (rating >= 4) {
-      // SI ES BUENA (4-5): Abre Google DIRECTAMENTE sin esperar
-      // Esto evita que el celular bloquee el popup
-      window.open(GOOGLE_REVIEW_LINK, '_blank');
+    if (currentRating === 0) return;
+
+    if (currentRating >= 4) {
+      // INTENTO 1: Abrir en pestaña nueva (Ideal)
+      const newWindow = window.open(GOOGLE_REVIEW_LINK, '_blank');
+      
+      // FALLBACK SAFARI: Si el navegador bloqueó el popup (newWindow es null),
+      // redirigimos en la MISMA pestaña para asegurar que llegue.
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        window.location.href = GOOGLE_REVIEW_LINK;
+      }
+      
       setStep('success');
     } else {
-      // SI ES MALA (1-3): Esperamos un cachito para que vea la estrella pintada y cambiamos
+      // Si es mala nota (1-3)
       setTimeout(() => {
         setStep('form');
       }, 300);
@@ -63,22 +75,16 @@ export default function Home() {
   return (
     <main className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#1a0b2e] via-[#2e1065] to-[#000000] p-4 font-sans overflow-hidden relative selection:bg-purple-500/30">
       
-      {/* Background Glows */}
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse" />
       <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-fuchsia-600/10 rounded-full blur-[120px] pointer-events-none" />
 
-      {/* Tarjeta Principal */}
       <motion.div 
         layout
         className="relative w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden"
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
       >
         <div className="p-8 md:p-12 relative z-10">
           <AnimatePresence mode="wait">
             
-            {/* --- PASO 1: SELECCIÓN --- */}
             {step === 'rating' && (
               <motion.div
                 key="step-rating"
@@ -97,16 +103,16 @@ export default function Home() {
                   <p className="text-white/50 text-sm">Deslizá el dedo para calificar</p>
                 </div>
 
-                {/* --- CONTENEDOR TÁCTIL (CLICK Y SWIPE) --- */}
                 <div 
                   ref={starsContainerRef}
-                  // Mouse (PC)
                   onMouseMove={handleTouchMove}
-                  onClick={handleInteractionEnd} // <--- ACÁ DETECTA EL CLICK FINAL
-                  onMouseLeave={() => setRating(0)}
-                  // Touch (Celular)
+                  onClick={handleInteractionEnd}
+                  onMouseLeave={() => {
+                    setRating(0);
+                    ratingRef.current = 0;
+                  }}
                   onTouchMove={handleTouchMove}
-                  onTouchEnd={handleInteractionEnd} // <--- ACÁ DETECTA CUANDO SOLTÁS EL DEDO
+                  onTouchEnd={handleInteractionEnd}
                   className="flex gap-1 py-4 px-2 cursor-pointer touch-none select-none hover:scale-105 transition-transform"
                 >
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -133,7 +139,6 @@ export default function Home() {
               </motion.div>
             )}
 
-            {/* --- PASO 2: FORMULARIO --- */}
             {step === 'form' && (
               <motion.div
                 key="step-form"
@@ -158,7 +163,6 @@ export default function Home() {
               </motion.div>
             )}
 
-            {/* --- PASO 3: ÉXITO --- */}
             {step === 'success' && (
               <motion.div
                 key="step-success"
@@ -175,7 +179,20 @@ export default function Home() {
                     {rating >= 4 ? "Te agradecemos por calificarnos en Google. 💜" : "Tu mensaje fue enviado. Gracias por ayudarnos."}
                   </p>
                 </div>
-                <button onClick={() => window.location.reload()} className="px-6 py-2 bg-white/5 hover:bg-white/10 rounded-full text-sm text-purple-200 border border-white/5">Volver al inicio</button>
+                
+                {/* BOTÓN DE RESPALDO POR SI SAFARI BLOQUEA TODO */}
+                {rating >= 4 && (
+                    <a 
+                      href={GOOGLE_REVIEW_LINK} 
+                      target="_blank"
+                      className="inline-flex items-center gap-2 text-purple-300 hover:text-white text-sm mt-2 border-b border-purple-300/30 pb-0.5"
+                    >
+                      <ExternalLink size={14} />
+                      Si no se abrió Google, click acá
+                    </a>
+                )}
+
+                <button onClick={() => window.location.reload()} className="block mx-auto mt-6 px-6 py-2 bg-white/5 hover:bg-white/10 rounded-full text-sm text-purple-200 border border-white/5">Volver al inicio</button>
               </motion.div>
             )}
 
